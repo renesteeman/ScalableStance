@@ -1,0 +1,1 @@
+.\mongoexport.exe --uri="mongodb+srv://RoundedNews:PASSWORD@cluster0.cddmsm5.mongodb.net/RoundedNews?retryWrites=true&w=majority" --collection cachedarticles --fields title,savedAt,query,language --type=csv --out articles.csv
