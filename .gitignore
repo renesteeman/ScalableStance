@@ -1,3 +1,5 @@
 **/Lib/**
 *.zip
 models/
+Secrets.py
+Pipeline/.hw_api_key
