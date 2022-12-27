@@ -5,6 +5,7 @@ stub = modal.Stub()
 getdailyarticles_image = modal.Image.debian_slim().pip_install(["hopsworks", "newsapi-python"])
 preprocessing_image = modal.Image.debian_slim().pip_install(["hopsworks", "nltk"])
 topicextraction_image = modal.Image.debian_slim().pip_install(["hopsworks", "bertopic", "sentence-transformers"])
+stance_image = modal.Image.debian_slim().pip_install(["hopsworks", "keras"])
 
 
 @stub.function(image=getdailyarticles_image, secrets=[
@@ -119,7 +120,6 @@ def topic_extraction():
     topic_labels_series = pd.Series(topic_labels)
     docs_topic = topic_labels_series[topics].tolist()
     data['predicted_topic'] = docs_topic
-    print(data)
 
     article_cleaned_feature_store = feature_store.get_or_create_feature_group(
         name="articles_topic",
@@ -129,11 +129,47 @@ def topic_extraction():
     )
     article_cleaned_feature_store.insert(data, write_options={"wait_for_job" : False})
 
+@stub.function(image=stance_image, secret=modal.Secret.from_name("hopswork-api-key"))
+def stance_predictions():
+    import numpy as np
+    import pandas as pd
+    import keras
+
+    #TODO(Model path from The Hub)
+    model_path = ""
+    model = keras.models.load_model(model_path)
+
+    # Data from Hopsworks
+    project = hopsworks.login()
+    feature_store = project.get_feature_store()
+    article_feature_group = feature_store.get_feature_group(name="articles_topic", version=1)
+    data = article_feature_group.read()
+
+    # inference
+    probs = model.predict(
+        x=[
+            data['title_stance'],
+            data['predicted_topic']
+        ]
+    )
+    predicted_class = np.argmax(probs, axis=1)
+    data['predicted_stance'] = predicted_class
+
+    #TODO(Check datatype compatbility with other feature groups)
+    article_stance_feature_store = feature_store.get_or_create_feature_group(
+        name="articles_stance",
+        version=1,
+        primary_key=["url"],
+        description="Articles with predicted stance"
+    )
+    article_stance_feature_store.insert(data, write_options={"wait_for_job" : False})
+
 @stub.function(schedule=modal.Period(days=1))
 def daily_pipeline():
     get_daily_articles_and_store()
     clean_and_store_daily_articles()
     topic_extraction()
+    stance_predictions()
 
 if __name__ == "__main__":
     # Programatic deployment of daily schedule
