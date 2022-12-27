@@ -174,3 +174,5 @@ def daily_pipeline():
 if __name__ == "__main__":
     # Programatic deployment of daily schedule
     stub.deploy("daily_pipeline")
+    with stub.run():
+        daily_pipeline()
