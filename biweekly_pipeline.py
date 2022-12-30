@@ -10,6 +10,7 @@ def train_model():
     """Train stance detection model and store trained model on Hopsworks Model Registry."""
     import tensorflow as tf
     import tensorflow_hub as hub
+    import tensorflow_text
     from sklearn.model_selection import train_test_split
     import joblib
 
