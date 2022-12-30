@@ -23,11 +23,13 @@ def get_daily_articles_and_store():
     newsapi = NewsApiClient(api_key=os.environ["NEWS-API-KEY"])
 
     # /v2/top-headlines
+    print("INFO: Getting top headlines from News API")
     top_headlines = newsapi.get_top_headlines(language='en', country='us')
 
     headlines = pd.DataFrame(top_headlines['articles'])
     headlines = headlines[['title', 'url', 'publishedAt']]
 
+    print("INFO: Connecting to Hopsworks and storing latest articles on Feature Store")
     project = hopsworks.login()
     feature_store = project.get_feature_store()
     article_feature_store = feature_store.get_or_create_feature_group(
@@ -71,6 +73,7 @@ def clean_and_store_daily_articles():
 
         return text
 
+    print("INFO: Connecting to Hopsworks and reading latest articles from Feature Store")
     project = hopsworks.login()
     feature_store = project.get_feature_store()
     article_feature_group = feature_store.get_feature_group(name="articles_daily", version=1)
@@ -79,6 +82,7 @@ def clean_and_store_daily_articles():
     data['title_stance'] = data.apply(lambda row : clean_text(row['title'], filter_stop_words=False), axis=1)
     data['title_topic'] = data.apply(lambda row : clean_text(row['title'], filter_stop_words=True), axis=1)
 
+    print("INFO: Storing latest preprocessed articles on Feature Store")
     article_cleaned_feature_store = feature_store.get_or_create_feature_group(
         name="articles_daily_cleaned",
         version=1,
@@ -96,6 +100,7 @@ def topic_extraction():
     import pandas as pd
     import hopsworks
 
+    print("INFO: Connecting to Hopsworks and reading latest preprocessed articles from Feature Store")
     project = hopsworks.login()
     feature_store = project.get_feature_store()
     article_feature_group = feature_store.get_feature_group(name="articles_daily_cleaned", version=1)
@@ -122,6 +127,7 @@ def topic_extraction():
     docs_topic = topic_labels_series[topics].tolist()
     data['predicted_topic'] = docs_topic
 
+    print("INFO: toring latest articles with topic detected to Feature Store")
     article_cleaned_feature_store = feature_store.get_or_create_feature_group(
         name="articles_topic",
         version=1,
@@ -139,12 +145,14 @@ def stance_predictions():
     import hopsworks
 
     # Articles to make predictions from Hopsworks
+    print("INFO: Connecting to Hopsworks and reading latest articles with topic from Feature Store")
     project = hopsworks.login()
     feature_store = project.get_feature_store()
     article_feature_group = feature_store.get_feature_group(name="articles_topic", version=1)
     data = article_feature_group.read()
 
     # Using saved model from Hopsworks Model Registry with joblib
+    print("INFO: Getting trained model from Hopsworks Model Registry")
     mr = project.get_model_registry()
     model = mr.get_model("stance_modal", version=1)
     model_dir = model.download()
@@ -161,6 +169,7 @@ def stance_predictions():
     data['predicted_stance'] = predicted_class
 
     # Add predicted stance to articles_stance feature view
+    print("INFO: Storing latest article stances to Feature Store")
     article_stance_feature_store = feature_store.get_or_create_feature_group(
         name="articles_stance",
         version=1,

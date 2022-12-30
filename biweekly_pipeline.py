@@ -17,6 +17,7 @@ def train_model():
     from hsml.schema import Schema
     from hsml.model_schema import ModelSchema
 
+    print("INFO: Connecting to Hopsworks and reading training data from Feature Store")
     project = hopsworks.login()
     feature_store = project.get_feature_store()
     article_feature_group = feature_store.get_feature_group(name="training_data_stance", version=1)
@@ -96,6 +97,7 @@ def train_model():
 
     # Thanks to Jim Dowling for inspiration for the code below
     # We will now upload our model to the Hopsworks Model Registry. First get an object for the model registry.
+    print("INFO: Getting Hopsworks Model registry for storing trained model")
     mr = project.get_model_registry()
     
     # The contents of the 'stance_model' directory will be saved to the model registry. Creating the dir first.
