@@ -3,20 +3,19 @@ import modal
 
 stub = modal.Stub()
 
-training_image = modal.Image.debian_slim().pip_install(["hopsworks", "tensorflow", "tensorflow-hub", "joblib", "scikit-learn", "matplotlib"])
+training_image = modal.Image.debian_slim().pip_install(["hopsworks", "tensorflow", "tensorflow-hub", "joblib", "scikit-learn"])
 
-@stub.function(image=training_image, secret= modal.Secret.from_name("hopswork-api-key"))
+@stub.function(image=training_image, schedule=modal.Period(days=3), secret= modal.Secret.from_name("hopswork-api-key"))
 def train_model():
+    """Train stance detection model and store trained model on Hopsworks Model Registry."""
     import tensorflow as tf
     import tensorflow_hub as hub
-    import pandas as pd
     from sklearn.model_selection import train_test_split
-    import matplotlib.pyplot as plt
     import joblib
-    from hsml.schema import Schema
-    from hsml.model_schema import ModelSchema
 
     import hopsworks
+    from hsml.schema import Schema
+    from hsml.model_schema import ModelSchema
 
     project = hopsworks.login()
     feature_store = project.get_feature_store()
@@ -113,20 +112,22 @@ def train_model():
     model_schema = ModelSchema(input_schema, output_schema)
 
     # Create an entry in the model registry that includes the model's name, desc, metrics
-    iris_model = mr.python.create_model(
-        name="stance_modal", 
-        metrics={"accuracy" : history.history['accuracy']},
+    stance_model = mr.python.create_model(
+        name="stance_model", 
+        metrics={
+            "accuracy": history.history['accuracy'], 
+            "validation_accuracy": history.history['val_accuracy']
+            },
         model_schema=model_schema,
         description="Articles stance predictor"
     )
     
     # Upload the model to the model registry, including all files in 'model_dir'
-    iris_model.save(model_dir)
+    stance_model.save(model_dir)
 
 
 if __name__ == "__main__":
-    # Programatic deployment of daily schedule
-    # stub.deploy("daily_pipeline")
-    # Testing model phase
+    # Programatic deployment of biweekly schedule
+    stub.deploy("biweekly_pipeline")
     with stub.run():
         train_model()

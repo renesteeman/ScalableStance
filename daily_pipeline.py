@@ -3,9 +3,9 @@ import modal
 
 stub = modal.Stub()
 getdailyarticles_image = modal.Image.debian_slim().pip_install(["hopsworks", "newsapi-python"])
-preprocessing_image = modal.Image.debian_slim().pip_install(["hopsworks", "nltk"])
-topicextraction_image = modal.Image.debian_slim().pip_install(["hopsworks", "bertopic", "sentence-transformers"])
-stance_image = modal.Image.debian_slim().pip_install(["hopsworks", "keras"])
+preprocessing_image = modal.Image.debian_slim().pip_install(["hopsworks", "nltk", "numpy"])
+topicextraction_image = modal.Image.debian_slim().pip_install(["hopsworks", "bertopic", "sentence-transformers", "scikit-learn"])
+stance_image = modal.Image.debian_slim().pip_install(["hopsworks", "joblib"])
 
 
 @stub.function(image=getdailyarticles_image, secrets=[
@@ -89,6 +89,7 @@ def clean_and_store_daily_articles():
 
 @stub.function(image=topicextraction_image, secret=modal.Secret.from_name("hopswork-api-key"))
 def topic_extraction():
+    """Identify article's main topic from preprocessed articles."""
     from bertopic import BERTopic
     from sklearn.cluster import AgglomerativeClustering
     from sentence_transformers import SentenceTransformer
@@ -115,7 +116,7 @@ def topic_extraction():
     )
     topic_model.set_topic_labels(topic_labels)
 
-    topic_model.get_topic_info()
+    # topic_model.get_topic_info()
 
     topic_labels_series = pd.Series(topic_labels)
     docs_topic = topic_labels_series[topics].tolist()
@@ -131,19 +132,23 @@ def topic_extraction():
 
 @stub.function(image=stance_image, secret=modal.Secret.from_name("hopswork-api-key"))
 def stance_predictions():
+    """Load trained model form Hopsworks Model Registry to make articles stance prediction."""
     import numpy as np
-    import pandas as pd
-    import keras
+    import joblib
 
-    #TODO(Model path from The Hub)
-    model_path = ""
-    model = keras.models.load_model(model_path)
+    import hopsworks
 
-    # Data from Hopsworks
+    # Articles to make predictions from Hopsworks
     project = hopsworks.login()
     feature_store = project.get_feature_store()
     article_feature_group = feature_store.get_feature_group(name="articles_topic", version=1)
     data = article_feature_group.read()
+
+    # Using saved model from Hopsworks Model Registry with joblib
+    mr = project.get_model_registry()
+    model = mr.get_model("stance_modal", version=1)
+    model_dir = model.download()
+    model = joblib.load(model_dir + "/stance_model.pkl")
 
     # inference
     probs = model.predict(
@@ -155,7 +160,7 @@ def stance_predictions():
     predicted_class = np.argmax(probs, axis=1)
     data['predicted_stance'] = predicted_class
 
-    #TODO(Check datatype compatbility with other feature groups)
+    # Add predicted stance to articles_stance feature view
     article_stance_feature_store = feature_store.get_or_create_feature_group(
         name="articles_stance",
         version=1,
