@@ -3,9 +3,9 @@ import modal
 
 stub = modal.Stub()
 
-training_image = modal.Image.debian_slim().pip_install(["hopsworks", "tensorflow", "tensorflow-hub", "joblib", "scikit-learn"])
+training_image = modal.Image.debian_slim().pip_install(["hopsworks", "tensorflow", "tensorflow-hub", "joblib", "scikit-learn", "tensorflow-text"])
 
-@stub.function(image=training_image, schedule=modal.Period(days=3), secret= modal.Secret.from_name("hopswork-api-key"))
+@stub.function(image=training_image, schedule=modal.Period(days=3), secret= modal.Secret.from_name("hopswork-api-key"), timeout=5400, retries=2)
 def train_model():
     """Train stance detection model and store trained model on Hopsworks Model Registry."""
     import tensorflow as tf
@@ -118,8 +118,8 @@ def train_model():
     stance_model = mr.python.create_model(
         name="stance_model", 
         metrics={
-            "accuracy": history.history['accuracy'], 
-            "validation_accuracy": history.history['val_accuracy']
+            "accuracy": history.history['accuracy'][-1], 
+            "validation_accuracy": history.history['val_accuracy'][-1],
             },
         model_schema=model_schema,
         description="Articles stance predictor"
@@ -133,4 +133,7 @@ if __name__ == "__main__":
     # Programatic deployment of biweekly schedule
     stub.deploy("biweekly_pipeline")
     with stub.run():
-        train_model()
+        try:
+            train_model()
+        except modal.exception.TimeoutError:
+            print("Timeout for model training. Try manual rerun or increase retry policy from current setting 2")
