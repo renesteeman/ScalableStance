@@ -1,6 +1,6 @@
 Use the mongoDB tools
 Use the guide for exporting a table located in the bin folder ('how to export.txt') (the database is the one used by mlbias.com which caches the articles on load, this site is owned by René)
 articles.csv will give you all the headlines, filter these for English only and headlines only (no search query)
-Label these articles as fit and save the resulting csv in pipeline/data/RoundedLabelled 
+Label these articles as fit and save the resulting csv in pipeline/data/RoundedLabelled (stance of 1 is against/negatie, 2 is neutral/mixed, 3 is in favor/positive)
 Run pipeline/UploadTrainingData
 The model will automatically use the new training data to improve itself! 
