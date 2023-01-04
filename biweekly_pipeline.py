@@ -3,7 +3,7 @@ import modal
 
 stub = modal.Stub()
 
-training_image = modal.Image.debian_slim().pip_install(["hopsworks", "tensorflow", "tensorflow-hub", "joblib", "scikit-learn", "tensorflow-text"])
+training_image = modal.Image.debian_slim().pip_install(["hopsworks", "tensorflow", "tensorflow-hub", "scikit-learn", "tensorflow-text"])
 
 @stub.function(image=training_image, schedule=modal.Period(days=3), secret= modal.Secret.from_name("hopswork-api-key"), timeout=5400, retries=2)
 def train_model():
@@ -12,7 +12,6 @@ def train_model():
     import tensorflow_hub as hub
     import tensorflow_text
     from sklearn.model_selection import train_test_split
-    import joblib
 
     import hopsworks
     from hsml.schema import Schema
@@ -106,8 +105,8 @@ def train_model():
     if os.path.isdir(model_dir) == False:
         os.mkdir(model_dir)
 
-    # Save both our model to 'model_dir', whose contents will be uploaded to the model registry
-    joblib.dump(model, model_dir + "/stance_model.pkl")
+    # Save Keras model in SavedModel format
+    model.save(model_dir)
  
     # Specify the schema of the model's input/output using the features (X_train) and labels (y_train)
     input_schema = Schema(X_train)

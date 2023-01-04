@@ -5,7 +5,7 @@ stub = modal.Stub()
 getdailyarticles_image = modal.Image.debian_slim().pip_install(["hopsworks", "newsapi-python"])
 preprocessing_image = modal.Image.debian_slim().pip_install(["hopsworks", "nltk", "numpy"])
 topicextraction_image = modal.Image.debian_slim().pip_install(["hopsworks", "bertopic", "sentence-transformers", "scikit-learn"])
-stance_image = modal.Image.debian_slim().pip_install(["hopsworks", "joblib"])
+stance_image = modal.Image.debian_slim().pip_install(["hopsworks", "keras", "tensorflow", "tensorflow-text"])
 
 
 @stub.function(image=getdailyarticles_image, secrets=[
@@ -127,7 +127,7 @@ def topic_extraction():
     docs_topic = topic_labels_series[topics].tolist()
     data['predicted_topic'] = docs_topic
 
-    print("INFO: toring latest articles with topic detected to Feature Store")
+    print("INFO: Storing latest articles with topic detected to Feature Store")
     article_cleaned_feature_store = feature_store.get_or_create_feature_group(
         name="articles_topic",
         version=1,
@@ -140,7 +140,8 @@ def topic_extraction():
 def stance_predictions():
     """Load trained model form Hopsworks Model Registry to make articles stance prediction."""
     import numpy as np
-    import joblib
+    import keras
+    import tensorflow_text
 
     import hopsworks
 
@@ -154,9 +155,9 @@ def stance_predictions():
     # Using saved model from Hopsworks Model Registry with joblib
     print("INFO: Getting trained model from Hopsworks Model Registry")
     mr = project.get_model_registry()
-    model = mr.get_model("stance_modal", version=1)
+    model = mr.get_best_model('stance_model', 'accuracy', 'max')
     model_dir = model.download()
-    model = joblib.load(model_dir + "/stance_model.pkl")
+    model = keras.models.load_model(model_dir)
 
     # inference
     probs = model.predict(
@@ -178,7 +179,7 @@ def stance_predictions():
     )
     article_stance_feature_store.insert(data, write_options={"wait_for_job" : False})
 
-@stub.function(schedule=modal.Period(days=1))
+@stub.function(schedule=modal.Period(days=1), timeout=600)
 def daily_pipeline():
     get_daily_articles_and_store()
     clean_and_store_daily_articles()
@@ -189,4 +190,7 @@ if __name__ == "__main__":
     # Programatic deployment of daily schedule
     stub.deploy("daily_pipeline")
     with stub.run():
-        daily_pipeline()
+        try:
+            daily_pipeline()
+        except modal.exception.TimeoutError:
+            print("Timeout for model inference. Try manual rerun or increase timeout period")
