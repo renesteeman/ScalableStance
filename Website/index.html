@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width" />
+		<title>My static Space</title>
+		<link rel="stylesheet" href="style.css" />
+	</head>
+	<body>
+        <header>
+          <h1>Stance Prediction on Latest News</h1>
+        </header>
+        <nav>
+          <ul>
+            <li><a href="https://modal.com/apps/dhruvshettty/biweekly_pipeline">Modal Biweekly Pipeline</a></li>
+            <li><a href="https://modal.com/apps/dhruvshettty/daily_pipeline">Modal Daily Pipeline</a></li>
+            <li><a href="https://modal.com/apps/dhruvshettty/latest_news_webhook">Modal Articles Webhook</a></li>
+          </ul>
+        </nav>
+        <section id="main-content">
+          <button id="get-articles" type="button">Get recent articles...</button>
+          <div id="message-container">Getting articles...</div>
+        </section>
+
+        <script>
+          const endpoint = 'https://dhruvshettty--latest-news-webhook-response-articles.modal.run/';
+          
+          document.getElementById("get-articles").onclick = function() {
+              var message = document.getElementById("message-container");
+              message.style.display = 'block';
+              setTimeout(function() { 
+                message.style.display = 'none'; 
+              }, 5000);
+            fetch(endpoint)
+              .then((response) => response.json())
+              .then((data) => {
+                const mainContent = document.getElementById("main-content");
+                data.forEach(post => {
+                  const article = document.createElement('article');
+                  article.innerHTML = `
+                    <a href="${post.url}"><h2>${post.title}</h2></a>
+                    <p>Published on ${post.publishedat}</p>
+                    <p>Categories: [${post.predicted_topic}]</p>
+                    <p>Stance: ${post.predicted_stance}</p>
+                  `;
+                  mainContent.appendChild(article);
+                });
+              })
+              .catch(error => console.error(error));
+          }
+        </script>
+	</body>
+</html>
