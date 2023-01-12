@@ -10,10 +10,10 @@ is in favor/positive, neutral, or against/negative towards the given topic. The 
 
 ## Modal and Hugging Face specifications
 There are 3 deployments on Modal:
-1. Daily pipeline: Get new articles, preprocess, extract topic, predict stance based on best ML model version and store these results in their respective features groups on Hopsworks.
-2. Biweekly pipeline: Train ML model on new training data and store the trained model on the Model Registry on Hopsworks.
-3. Webhook: Endpoint that returns JSON with 10 most recent articles with predicted stance from Hopsworks.
+1. [Daily pipeline](https://github.com/renesteeman/ScalableStance/blob/main/daily_pipeline.py): Get new articles, preprocess, extract topic, predict stance based on best ML model version and store these results in their respective features groups on Hopsworks.
+2. [Biweekly pipeline](https://github.com/renesteeman/ScalableStance/blob/main/biweekly_pipeline.py): Train ML model on new training data and store the trained model on the Model Registry on Hopsworks.
+3. [Webhook](https://github.com/renesteeman/ScalableStance/blob/main/latest_news_webhook.py): Endpoint that returns JSON with 10 most recent articles with predicted stance from Hopsworks.
 
 Static user-interface on Hugging Face that uses the fetch JavaScript API to make a call to the Modal webhook, which displays the article title with link, publication date, predicted topics/categories, and the predicted stance.
 
-For more information about the architecture, please have a look at "Scalable Stance Diagram" which also further explains how the algorithms function.
+For more information about the architecture, please have a look at "[Scalable Stance Diagram](https://github.com/renesteeman/ScalableStance/blob/main/Scalable%20Stance%20Diagram.svg)" which also further explains how the algorithms function.
